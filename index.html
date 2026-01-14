@@ -37,15 +37,13 @@
 
     .container{ max-width:1160px; margin:0 auto; padding:24px 16px 40px; }
     @media (max-width:640px){
-      .container{ padding:18px 12px 96px; } /* เผื่อ bottom action bar */
+      .container{ padding:18px 12px 96px; }
     }
 
     .topbar{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
     .title{ margin:0; font-size:20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
     .subtitle{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.55; max-width:860px; }
-    @media (max-width:640px){
-      .subtitle{ display:none; }
-    }
+    @media (max-width:640px){ .subtitle{ display:none; } }
 
     .badge{
       font-size:12px; padding:4px 10px;
@@ -62,9 +60,7 @@
       background:rgba(255,255,255,0.06); color:var(--muted);
       white-space:nowrap;
     }
-    @media (max-width:640px){
-      .pill{ margin-top:8px; }
-    }
+    @media (max-width:640px){ .pill{ margin-top:8px; } }
 
     .dot{ width:8px; height:8px; border-radius:999px; background:var(--accent); box-shadow:0 0 0 4px rgba(96,165,250,0.18); }
     .dot.ok{ background:var(--ok); box-shadow:0 0 0 4px rgba(52,211,153,0.16); }
@@ -92,7 +88,9 @@
     .cardTitle{ margin:0; font-size:14px; font-weight:900; }
 
     label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
-    textarea, input{
+
+    /* IMPORTANT: avoid styling checkboxes as full-width inputs */
+    textarea, input:not([type="checkbox"]){
       width:100%;
       background:rgba(255,255,255,0.06);
       color:var(--text);
@@ -102,6 +100,7 @@
       outline:none;
     }
     textarea{ min-height:150px; resize:vertical; }
+
     input[type="number"]{ width:180px; }
     @media (max-width:640px){
       input[type="number"]{ width:100%; }
@@ -156,6 +155,27 @@
     tr:hover td{ background:rgba(255,255,255,0.03); }
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
+    /* Completed match styling */
+    .doneRow td{
+      color: rgba(255,255,255,0.48);
+      text-decoration: line-through;
+      text-decoration-thickness: 1px;
+      text-decoration-color: rgba(255,255,255,0.32);
+    }
+    .doneRow td:first-child,
+    .doneRow td:nth-child(2){
+      text-decoration: none; /* keep checkbox + match number readable */
+      color: rgba(255,255,255,0.60);
+    }
+
+    .checkCell{ width:54px; }
+    .checkWrap{ display:flex; align-items:center; justify-content:center; }
+    input[type="checkbox"]{
+      width:18px; height:18px;
+      accent-color: var(--accent);
+      cursor:pointer;
+    }
+
     /* -------- Mobile Tabs + Bottom Action Bar -------- */
     .tabsWrap{
       display:none;
@@ -178,9 +198,7 @@
       background:rgba(255,255,255,0.10);
       color:rgba(255,255,255,0.95);
     }
-    @media (max-width:980px){
-      .tabsWrap{ display:flex; }
-    }
+    @media (max-width:980px){ .tabsWrap{ display:flex; } }
 
     .mobileOnly{ display:none; }
     .desktopOnly{ display:block; }
@@ -207,9 +225,7 @@
       align-items:center;
     }
     .bottomBarInner .btn{ flex:1; }
-    @media (max-width:640px){
-      .bottomBar{ display:block; }
-    }
+    @media (max-width:640px){ .bottomBar{ display:block; } }
   </style>
 </head>
 
@@ -217,7 +233,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useMemo, useState } = React;
+    const { useMemo, useState, useEffect } = React;
 
     // ---------------- Rules ----------------
     const SPECIAL_NAME = "พี่เจี๊ยบ";
@@ -309,7 +325,7 @@
       return rested;
     }
 
-    // ---------------- Scheduler (Balance-first + Continue + fallback) ----------------
+    // ---------------- Scheduler (Balance-first + Continue) ----------------
     function buildScheduleBalanceFirst(players, opts, initial){
       const {
         timeBudgetMs = 1600,
@@ -375,7 +391,6 @@
           prevPlayers = mPlayers;
         }
 
-        // prefer new pairs, if stuck allow repeats
         function pickNextMatch(nextMatchIndex){
           function tryPick(preferNew){
             let bestCand = null;
@@ -510,7 +525,7 @@
       return "warn";
     }
 
-    // --------- Stable components OUTSIDE App (fix focus loss) ---------
+    // -------- Stable components OUTSIDE App (fix focus loss) --------
     const SettingsCard = React.memo(function SettingsCard(props){
       const {
         namesText, setNamesText,
@@ -625,8 +640,10 @@
       const [working, setWorking] = useState(false);
       const [result, setResult] = useState(null);
 
-      // Mobile tab: summary | schedule | players | settings
       const [mobileTab, setMobileTab] = useState("summary");
+
+      // per-match completion state {1:true, 2:true,...}
+      const [doneMatches, setDoneMatches] = useState({});
 
       function isNarrow(){
         return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
@@ -650,6 +667,7 @@
             specialFirstBad: false,
             maxConsecutive,
           });
+          setDoneMatches({});
           return;
         }
 
@@ -672,6 +690,7 @@
               specialName: SPECIAL_NAME,
             }, null);
             computeAndSet(res);
+            setDoneMatches({});
             if (isNarrow()) setMobileTab("schedule");
           } finally {
             setWorking(false);
@@ -710,11 +729,34 @@
         }, 0);
       }
 
+      // prune done flags if schedule length shrinks
+      useEffect(() => {
+        if (!result) return;
+        const len = result.matches.length;
+        setDoneMatches(prev => {
+          const next = {};
+          for (const k of Object.keys(prev)){
+            const idx = Number(k);
+            if (idx >= 1 && idx <= len) next[idx] = true;
+          }
+          return next;
+        });
+      }, [result ? result.matches.length : 0]);
+
+      function toggleDone(matchIndex1Based){
+        setDoneMatches(prev => {
+          const next = { ...prev };
+          if (next[matchIndex1Based]) delete next[matchIndex1Based];
+          else next[matchIndex1Based] = true;
+          return next;
+        });
+      }
+
       const coveragePct = result ? (result.coverageRate * 100) : 0;
       const progressWidth = `${Math.max(0, Math.min(100, coveragePct))}%`;
 
-      const coverageOk = result ? (result.coveredPairs.size === result.totalPairs && result.totalPairs > 0) : false;
-      const balanceOk = result ? (result.range === 0 && result.matches.length > 0) : false;
+      const coverageOk = !!(result && result.coveredPairs.size === result.totalPairs && result.totalPairs > 0);
+      const balanceOk = !!(result && result.range === 0 && result.matches.length > 0);
       const violationsCount = result ? result.violations.length : 0;
       const specialFirstBad = result ? result.specialFirstBad : false;
 
@@ -741,9 +783,11 @@
           );
         }
 
+        const doneCount = Object.keys(doneMatches).length;
+
         return (
           <div className="kpis">
-            <div className="kpi"><p className="kpiLabel">Matches</p><p className="kpiValue">{result.matches.length}</p><div className="kpiHint">เพดาน {maxMatches}</div></div>
+            <div className="kpi"><p className="kpiLabel">Matches</p><p className="kpiValue">{result.matches.length}</p><div className="kpiHint">Done {doneCount}</div></div>
             <div className="kpi"><p className="kpiLabel">Coverage</p><p className="kpiValue">{coveragePct.toFixed(1)}%</p><div className="kpiHint">{result.coveredPairs.size}/{result.totalPairs} partner pairs</div></div>
             <div className="kpi"><p className="kpiLabel">Balance (range)</p><p className="kpiValue">{result.range}</p><div className="kpiHint">max {result.maxPlayed} / min {result.minPlayed}</div></div>
             <div className="kpi"><p className="kpiLabel">Rule breaks</p><p className="kpiValue">{violationsCount + (specialFirstBad?1:0)}</p><div className="kpiHint">streak + special</div></div>
@@ -826,20 +870,43 @@
                 <button className="btn" onClick={() => downloadText("schedule.json", JSON.stringify(result.matches, null, 2))} disabled={result.matches.length===0}>JSON</button>
               </div>
             </div>
+
             <table>
-              <thead><tr><th style={{width:84}}>Match</th><th>Team A</th><th>Team B</th></tr></thead>
+              <thead>
+                <tr>
+                  <th className="checkCell">Done</th>
+                  <th style={{width:84}}>Match</th>
+                  <th>Team A</th>
+                  <th>Team B</th>
+                </tr>
+              </thead>
               <tbody>
-                {result.matches.map((m, idx)=>(
-                  <tr key={idx}>
-                    <td className="mono">{idx+1}</td>
-                    <td>{formatTeam(m.t1)}</td>
-                    <td>{formatTeam(m.t2)}</td>
-                  </tr>
-                ))}
+                {result.matches.map((m, idx)=>{
+                  const matchNo = idx+1;
+                  const isDone = !!doneMatches[matchNo];
+                  return (
+                    <tr key={idx} className={isDone ? "doneRow" : ""}>
+                      <td className="checkCell">
+                        <div className="checkWrap">
+                          <input
+                            type="checkbox"
+                            checked={isDone}
+                            onChange={() => toggleDone(matchNo)}
+                            aria-label={`Mark match ${matchNo} as done`}
+                          />
+                        </div>
+                      </td>
+                      <td className="mono">{matchNo}</td>
+                      <td>{formatTeam(m.t1)}</td>
+                      <td>{formatTeam(m.t2)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+
             <div className="help">
-              กติกา: ถ้ามี "{SPECIAL_NAME}" จะไม่ถูกจัดลง Match #1 | maxConsecutive อัตโนมัติ: 5→4, 6→3, 7+→2
+              ติ๊ก Done แล้วแถวนั้นจะขีดฆ่าและสีจางลง (สถานะอยู่ต่อแม้กด Continue) | Generate ใหม่จะรีเซ็ต Done ทั้งหมด
             </div>
           </div>
         );
@@ -864,13 +931,12 @@
               </div>
 
               <p className="subtitle">
-                PC: ซ้าย Settings/Results/Players ขวา Schedule | มือถือ: ใช้ Tabs + ปุ่มล่างแบบ sticky
+                PC: ซ้าย Settings/Results/Players ขวา Schedule | มือถือ: Tabs + ปุ่มล่าง | Schedule มี Done
               </p>
             </div>
             <div className="badge mono">n ≥ 4 | doubles</div>
           </div>
 
-          {/* Mobile Tabs */}
           <div className="tabsWrap">
             <button className={`tabBtn ${mobileTab==="summary"?"active":""}`} onClick={()=>setMobileTab("summary")}>Summary</button>
             <button className={`tabBtn ${mobileTab==="schedule"?"active":""}`} onClick={()=>setMobileTab("schedule")}>Schedule</button>
@@ -878,7 +944,6 @@
             <button className={`tabBtn ${mobileTab==="settings"?"active":""}`} onClick={()=>setMobileTab("settings")}>Settings</button>
           </div>
 
-          {/* Desktop grid */}
           <div className="grid desktopOnly" style={{gridTemplateColumns:"420px 1fr"}}>
             <div style={{display:"flex", flexDirection:"column", gap:14}}>
               <SettingsCard
@@ -896,7 +961,7 @@
                 result={result}
                 onGenerateFresh={onGenerateFresh}
                 onContinue={onContinue}
-                onClear={()=>setResult(null)}
+                onClear={()=>{ setResult(null); setDoneMatches({}); }}
               />
 
               <ResultsCard renderKPIs={renderKPIs} renderNotices={renderNotices} />
@@ -907,7 +972,6 @@
             </div>
           </div>
 
-          {/* Mobile single-column */}
           <div className="mobileOnly" style={{display:"flex", flexDirection:"column", gap:14}}>
             {mobileTab==="summary" && <ResultsCard renderKPIs={renderKPIs} renderNotices={renderNotices} />}
             {mobileTab==="schedule" && renderSchedule()}
@@ -928,12 +992,11 @@
                 result={result}
                 onGenerateFresh={onGenerateFresh}
                 onContinue={onContinue}
-                onClear={()=>setResult(null)}
+                onClear={()=>{ setResult(null); setDoneMatches({}); }}
               />
             )}
           </div>
 
-          {/* Bottom action bar for mobile */}
           <div className="bottomBar">
             <div className="bottomBarInner">
               <button className="btn primary" onClick={onGenerateFresh} disabled={working || players.length < 4}>
@@ -948,7 +1011,7 @@
       );
     }
 
-    // ---------------- Error Overlay ----------------
+    // ---------------- Error Overlay (show real error instead of blank page) ----------------
     const rootEl = document.getElementById("root");
 
     function showFatal(err){
@@ -956,6 +1019,7 @@
       rootEl.innerHTML = `
         <div style="padding:18px;font-family:system-ui;color:#fff">
           <div style="font-weight:900;font-size:16px;margin-bottom:8px">App crashed</div>
+          <div style="opacity:.8;margin-bottom:8px">เปิด DevTools Console จะเห็นรายละเอียดเพิ่ม</div>
           <pre style="white-space:pre-wrap;background:rgba(255,255,255,0.06);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.14)">
 ${String(err && err.stack ? err.stack : err)}
           </pre>
@@ -968,6 +1032,7 @@ ${String(err && err.stack ? err.stack : err)}
       ReactDOM.createRoot(rootEl).render(<App />);
     }catch(e){
       showFatal(e);
+      console.error(e);
     }
   </script>
 </body>
