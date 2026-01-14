@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Badminton Doubles Scheduler (Rules + Continue + Safe)</title>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b0f1a;
+      --border:rgba(255,255,255,0.14);
+      --text:rgba(255,255,255,0.92);
+      --muted:rgba(255,255,255,0.70);
+      --faint:rgba(255,255,255,0.55);
+      --ok:#34d399;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --accent:#60a5fa;
+      --shadow:0 10px 30px rgba(0,0,0,0.35);
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans Thai", sans-serif;
+      background:
+        radial-gradient(1200px 700px at 10% 10%, rgba(96,165,250,0.25), transparent 50%),
+        radial-gradient(1200px 700px at 90% 20%, rgba(167,139,250,0.22), transparent 55%),
+        radial-gradient(1200px 700px at 60% 90%, rgba(52,211,153,0.15), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    .container{ max-width:1160px; margin:0 auto; padding:28px 18px 40px; }
+    .topbar{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+    .title{ margin:0; font-size:20px; display:flex; align-items:center; gap:10px; }
+    .badge{
+      font-size:12px; padding:4px 10px;
+      border:1px solid var(--border); border-radius:999px;
+      background:rgba(255,255,255,0.06); color:var(--muted);
+      white-space:nowrap;
+    }
+    .subtitle{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.55; max-width:860px; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      margin-top:10px;
+      font-size:12px; padding:6px 10px;
+      border-radius:999px; border:1px solid rgba(255,255,255,0.14);
+      background:rgba(255,255,255,0.06); color:var(--muted);
+      white-space:nowrap;
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; background:var(--accent); box-shadow:0 0 0 4px rgba(96,165,250,0.18); }
+    .dot.ok{ background:var(--ok); box-shadow:0 0 0 4px rgba(52,211,153,0.16); }
+    .dot.warn{ background:var(--warn); box-shadow:0 0 0 4px rgba(251,191,36,0.16); }
+    .dot.bad{ background:var(--bad); box-shadow:0 0 0 4px rgba(251,113,133,0.16); }
+
+    .progressWrap{ margin-top:10px; border:1px solid rgba(255,255,255,0.12); border-radius:999px; background:rgba(255,255,255,0.05); overflow:hidden; }
+    .progressBar{ height:10px; background:linear-gradient(90deg, rgba(52,211,153,0.95), rgba(96,165,250,0.9)); width:0%; }
+
+    .grid{ display:grid; grid-template-columns:420px 1fr; gap:14px; align-items:start; }
+    @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
+
+    .card{
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+    }
+    .cardHeader{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .cardTitle{ margin:0; font-size:14px; font-weight:900; }
+
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    textarea, input{
+      width:100%;
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius:14px;
+      padding:10px 12px;
+      outline:none;
+    }
+    textarea{ min-height:160px; resize:vertical; }
+    input[type="number"]{ width:180px; }
+
+    .inlineField{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    .help{ font-size:12px; color:var(--muted); line-height:1.55; margin-top:6px; }
+
+    .buttons{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn{
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:900;
+      letter-spacing:0.2px;
+    }
+    .btn.primary{
+      background:linear-gradient(135deg, rgba(96,165,250,0.8), rgba(167,139,250,0.7));
+      border-color:rgba(255,255,255,0.22);
+    }
+    .btn:disabled{ opacity:0.55; cursor:not-allowed; }
+
+    .notice{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      line-height:1.5;
+      font-size:13px;
+    }
+    .notice.ok{ border-color:rgba(52,211,153,0.35); background:rgba(52,211,153,0.10); }
+    .notice.warn{ border-color:rgba(251,191,36,0.45); background:rgba(251,191,36,0.10); }
+    .notice.bad{ border-color:rgba(251,113,133,0.45); background:rgba(251,113,133,0.10); }
+
+    .kpis{ display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:10px; }
+    @media (max-width:980px){ .kpis{ grid-template-columns:repeat(2, 1fr); } }
+    .kpi{ padding:12px; border-radius:16px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); }
+    .kpiLabel{ font-size:12px; color:var(--muted); margin:0 0 6px; }
+    .kpiValue{ font-size:16px; font-weight:900; margin:0; }
+    .kpiHint{ font-size:12px; color:var(--faint); margin-top:6px; line-height:1.45; }
+
+    table{ width:100%; border-collapse:collapse; margin-top:10px; border-radius:14px; overflow:hidden; }
+    th, td{ border-bottom:1px solid rgba(255,255,255,0.08); padding:10px; text-align:left; font-size:13px; }
+    th{ background:rgba(255,255,255,0.06); font-weight:900; }
+    tr:hover td{ background:rgba(255,255,255,0.03); }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useMemo, useState } = React;
+
+    // ---------------- Rules ----------------
+    const SPECIAL_NAME = "พี่เจี๊ยบ";
+
+    function autoMaxConsecutive(n){
+      // user requirement:
+      // 5 -> 4, 6 -> 3, 7+ -> 2 (4 -> 2)
+      if (n === 5) return 4;
+      if (n === 6) return 3;
+      if (n >= 7) return 2;
+      return 2; // n=4
+    }
+
+    // ---------------- Utilities ----------------
+    function combPairs(players){
+      const pairs = [];
+      for (let i=0; i<players.length; i++){
+        for (let j=i+1; j<players.length; j++) pairs.push([players[i], players[j]]);
+      }
+      return pairs;
+    }
+    function pairKey(a,b){ return a < b ? `${a}__${b}` : `${b}__${a}`; }
+    function shuffle(arr){
+      const a = arr.slice();
+      for (let i=a.length-1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function formatTeam(t){ return `${t[0]} + ${t[1]}`; }
+    function playersOfMatch(m){ return new Set([m.t1[0], m.t1[1], m.t2[0], m.t2[1]]); }
+    function toCSV(matches){
+      const rows = [["Match#", "Team A", "Team B"].join(",")];
+      matches.forEach((m, idx)=> rows.push([idx+1, `"${formatTeam(m.t1)}"`, `"${formatTeam(m.t2)}"`].join(",")));
+      return rows.join("\n");
+    }
+    function downloadText(filename, text){
+      const blob = new Blob([text], { type:"text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+    function cloneMap(m){
+      const n = new Map();
+      for (const [k,v] of m.entries()) n.set(k,v);
+      return n;
+    }
+    function calcRange(playedMap, players){
+      let min = Infinity, max = -Infinity;
+      for (const p of players){
+        const v = playedMap.get(p) || 0;
+        min = Math.min(min, v);
+        max = Math.max(max, v);
+      }
+      const minPlayed = (min===Infinity?0:min);
+      const maxPlayed = (max===-Infinity?0:max);
+      return { minPlayed, maxPlayed, range: maxPlayed - minPlayed };
+    }
+
+    // ---------------- Validations ----------------
+    function validateMaxConsecutive(players, matches, maxConsecutive){
+      const streak = new Map(players.map(p=>[p,0]));
+      let prevPlayers = new Set();
+      const violations = [];
+      for (let i=0; i<matches.length; i++){
+        const curPlayers = playersOfMatch(matches[i]);
+        for (const p of players){
+          if (curPlayers.has(p)){
+            const next = prevPlayers.has(p) ? (streak.get(p)+1) : 1;
+            streak.set(p, next);
+            if (next > maxConsecutive) violations.push({ matchIndex:i+1, player:p, streak:next });
+          } else {
+            streak.set(p, 0);
+          }
+        }
+        prevPlayers = curPlayers;
+      }
+      return violations;
+    }
+    function validateNoSpecialInFirstMatch(matches, specialName){
+      if (!matches || matches.length === 0) return false;
+      return playersOfMatch(matches[0]).has(specialName);
+    }
+    function calcRest(players, matches){
+      const rested = new Map(players.map(p=>[p,0]));
+      for (const m of matches){
+        const inMatch = playersOfMatch(m);
+        for (const p of players) if (!inMatch.has(p)) rested.set(p, rested.get(p)+1);
+      }
+      return rested;
+    }
+
+    // ---------------- Scheduler (Balance-first + Continue + fallback) ----------------
+    /**
+     * Primary objective: minimize imbalance (range = maxPlayed - minPlayed)
+     * Secondary: maximize partner pair coverage
+     * Tertiary: maximize matches (up to maxMatches)
+     * Constraints:
+     * - streak per player <= maxConsecutive
+     * - if specialName exists: must NOT be in match #1
+     *
+     * Supports initial for Continue: matches/coveredPairs/played/streak/prevPlayers
+     */
+    function buildScheduleBalanceFirst(players, opts, initial){
+      const {
+        timeBudgetMs = 1600,
+        maxRestarts = 1200,
+        maxStepsHardCap = 20000,
+        maxMatches = 60,              // TOTAL matches after building
+        candidateSamplesPerStep = 280,
+        maxConsecutive = 2,
+        specialName = SPECIAL_NAME,
+      } = opts || {};
+
+      const allPairs = combPairs(players);
+      const allKeys = allPairs.map(([a,b]) => pairKey(a,b));
+      const totalPairs = allKeys.length;
+
+      const initMatches = initial?.matches ? initial.matches.slice() : [];
+      const initCovered = initial?.coveredPairs ? new Set(initial.coveredPairs) : new Set();
+      const initPlayed  = initial?.played ? cloneMap(initial.played) : new Map(players.map(p => [p,0]));
+      const initStreak  = initial?.streak ? cloneMap(initial.streak) : new Map(players.map(p => [p,0]));
+      const initPrevPlayers = initial?.prevPlayers ? new Set(initial.prevPlayers) : new Set();
+
+      const start = performance.now();
+      let best = null;
+
+      function evaluate(matches, coveredPairs, played){
+        const { minPlayed, maxPlayed, range } = calcRange(played, players);
+        // balance dominates
+        const score = (-1000000 * range) + (2000 * coveredPairs.size) + (1 * matches.length);
+        return { score, minPlayed, maxPlayed, range };
+      }
+
+      function tryOnce(){
+        const matches = initMatches.slice();
+        const covered = new Set(initCovered);
+        const played = cloneMap(initPlayed);
+        const streak = cloneMap(initStreak);
+        let prevPlayers = new Set(initPrevPlayers);
+
+        const remaining = new Set(allKeys);
+        for (const k of covered) remaining.delete(k);
+
+        const candidatePairs = shuffle(allPairs);
+
+        function wouldViolateStreak(mPlayers){
+          for (const p of mPlayers){
+            const next = prevPlayers.has(p) ? ((streak.get(p)||0)+1) : 1;
+            if (next > maxConsecutive) return true;
+          }
+          return false;
+        }
+
+        function wouldViolateSpecialFirst(mPlayers, nextMatchIndex){
+          if (!players.includes(specialName)) return false;
+          if (nextMatchIndex !== 1) return false;
+          return mPlayers.has(specialName);
+        }
+
+        function applyMatch(mPlayers){
+          for (const p of players){
+            if (mPlayers.has(p)){
+              played.set(p, (played.get(p)||0) + 1);
+              const next = prevPlayers.has(p) ? ((streak.get(p)||0)+1) : 1;
+              streak.set(p, next);
+            } else {
+              streak.set(p, 0);
+            }
+          }
+          prevPlayers = mPlayers;
+        }
+
+        // IMPORTANT: prefer new pairs, but if stuck allow repeats to keep appending
+        function pickNextMatch(nextMatchIndex){
+          function tryPick(preferNew){
+            let bestCand = null;
+
+            for (let s=0; s<candidateSamplesPerStep; s++){
+              let p1 = null;
+              for (let t=0; t<35; t++){
+                const [a,b] = candidatePairs[Math.floor(Math.random()*candidatePairs.length)];
+                const k1 = pairKey(a,b);
+                if (preferNew && remaining.size > 0 && !remaining.has(k1)) continue;
+                p1 = [a,b,k1];
+                break;
+              }
+              if (!p1) continue;
+              const [a,b,k1] = p1;
+
+              let p2 = null;
+              for (let t=0; t<50; t++){
+                const [c,d] = candidatePairs[Math.floor(Math.random()*candidatePairs.length)];
+                const k2 = pairKey(c,d);
+                if (preferNew && remaining.size > 0 && !remaining.has(k2)) continue;
+                if (a===c || a===d || b===c || b===d) continue;
+                p2 = [c,d,k2];
+                break;
+              }
+              if (!p2) continue;
+
+              const [c,d,k2] = p2;
+              const mPlayers = new Set([a,b,c,d]);
+
+              if (wouldViolateSpecialFirst(mPlayers, nextMatchIndex)) continue;
+              if (wouldViolateStreak(mPlayers)) continue;
+
+              const played2 = cloneMap(played);
+              for (const p of mPlayers) played2.set(p, (played2.get(p)||0)+1);
+              const { range } = calcRange(played2, players);
+
+              const newPairs =
+                (remaining.has(k1) ? 1 : 0) +
+                (remaining.has(k2) ? 1 : 0) +
+                ((remaining.size === 0 && !covered.has(k1)) ? 1 : 0) +
+                ((remaining.size === 0 && !covered.has(k2)) ? 1 : 0);
+
+              const newWeight = preferNew ? 5000 : 200;
+              const hScore = (-1000000 * range) + (newWeight * newPairs) + (10 * matches.length);
+
+              if (!bestCand || hScore > bestCand.hScore){
+                bestCand = { a,b,c,d,k1,k2,hScore };
+              }
+            }
+            return bestCand;
+          }
+
+          const c1 = tryPick(true);
+          if (c1) return c1;
+          return tryPick(false);
+        }
+
+        let steps = 0;
+        while (steps < maxStepsHardCap && matches.length < maxMatches){
+          steps++;
+          const nextMatchIndex = matches.length + 1;
+          const cand = pickNextMatch(nextMatchIndex);
+          if (!cand) break;
+
+          const m = { t1:[cand.a, cand.b], t2:[cand.c, cand.d] };
+          matches.push(m);
+
+          covered.add(cand.k1);
+          covered.add(cand.k2);
+          remaining.delete(cand.k1);
+          remaining.delete(cand.k2);
+
+          applyMatch(playersOfMatch(m));
+        }
+
+        // final hard check for special first
+        if (players.includes(specialName) && matches.length > 0 && playersOfMatch(matches[0]).has(specialName)) {
+          return null;
+        }
+
+        const evalRes = evaluate(matches, covered, played);
+        return { matches, coveredPairs:covered, played, streak, prevPlayers, ...evalRes };
+      }
+
+      let restarts = 0;
+      while (restarts < maxRestarts && (performance.now() - start) < timeBudgetMs){
+        const res = tryOnce();
+        if (!res) { restarts++; continue; }
+
+        if (!best) best = res;
+        else if (res.score > best.score) best = res;
+        else if (res.score === best.score){
+          if (res.coveredPairs.size > best.coveredPairs.size) best = res;
+          else if (res.coveredPairs.size === best.coveredPairs.size && res.matches.length > best.matches.length) best = res;
+        }
+        restarts++;
+      }
+
+      if (!best){
+        return {
+          matches: [],
+          coveredPairs: new Set(),
+          totalPairs,
+          coverageRate: 0,
+          played: new Map(players.map(p=>[p,0])),
+          minPlayed: 0,
+          maxPlayed: 0,
+          range: 0,
+          streak: new Map(players.map(p=>[p,0])),
+          prevPlayers: new Set(),
+        };
+      }
+
+      const coverageRate = totalPairs ? (best.coveredPairs.size / totalPairs) : 0;
+      return {
+        matches: best.matches,
+        coveredPairs: best.coveredPairs,
+        totalPairs,
+        coverageRate,
+        played: best.played,
+        minPlayed: best.minPlayed,
+        maxPlayed: best.maxPlayed,
+        range: best.range,
+        streak: best.streak,
+        prevPlayers: best.prevPlayers,
+      };
+    }
+
+    function dotType({specialFirstBad, violations, coverageOk, balanceOk}){
+      if (specialFirstBad || violations > 0) return "bad";
+      if (coverageOk && balanceOk) return "ok";
+      return "warn";
+    }
+
+    // ---------------- App ----------------
+    function App(){
+      const [namesText, setNamesText] = useState(
+`พี่เจี๊ยบ
+อาม
+กั้ม
+คิม
+อุ้ม
+แซม
+พิมมี่`
+      );
+
+      const players = useMemo(()=>{
+        const raw = namesText.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        const uniq = [];
+        const seen = new Set();
+        for (const n of raw){
+          if (!seen.has(n)) { uniq.push(n); seen.add(n); }
+        }
+        return uniq;
+      }, [namesText]);
+
+      const maxConsecutive = useMemo(() => autoMaxConsecutive(players.length), [players.length]);
+
+      const [timeBudgetMs, setTimeBudgetMs] = useState(2500);
+      const [maxMatches, setMaxMatches] = useState(60);
+      const [addMatches, setAddMatches] = useState(10);
+
+      const [working, setWorking] = useState(false);
+      const [result, setResult] = useState(null);
+
+      function computeAndSet(res){
+        // GUARD: never crash
+        if (!res || !Array.isArray(res.matches)) {
+          setResult({
+            matches: [],
+            coveredPairs: new Set(),
+            totalPairs: 0,
+            coverageRate: 0,
+            played: new Map(players.map(p=>[p,0])),
+            minPlayed: 0,
+            maxPlayed: 0,
+            range: 0,
+            streak: new Map(players.map(p=>[p,0])),
+            prevPlayers: new Set(),
+            violations: [],
+            rested: new Map(players.map(p=>[p,0])),
+            specialFirstBad: false,
+            maxConsecutive,
+          });
+          return;
+        }
+
+        const violations = validateMaxConsecutive(players, res.matches, maxConsecutive);
+        const rested = calcRest(players, res.matches);
+        const specialFirstBad = players.includes(SPECIAL_NAME) ? validateNoSpecialInFirstMatch(res.matches, SPECIAL_NAME) : false;
+
+        setResult({ ...res, violations, rested, specialFirstBad, maxConsecutive });
+      }
+
+      function onGenerateFresh(){
+        setWorking(true);
+        setTimeout(() => {
+          try{
+            const res = buildScheduleBalanceFirst(players, {
+              timeBudgetMs,
+              maxMatches,
+              candidateSamplesPerStep: 280,
+              maxConsecutive,
+              specialName: SPECIAL_NAME,
+            }, null);
+            computeAndSet(res);
+          } finally {
+            setWorking(false);
+          }
+        }, 0);
+      }
+
+      function onContinue(){
+        if (!result) return;
+
+        setWorking(true);
+        setTimeout(() => {
+          try{
+            const currentTotal = result.matches.length;
+            const targetTotal = Math.min(maxMatches, currentTotal + Math.max(0, addMatches));
+
+            const res = buildScheduleBalanceFirst(players, {
+              timeBudgetMs,
+              maxMatches: targetTotal,
+              candidateSamplesPerStep: 280,
+              maxConsecutive,
+              specialName: SPECIAL_NAME,
+            }, {
+              matches: result.matches,
+              coveredPairs: result.coveredPairs,
+              played: result.played,
+              streak: result.streak,
+              prevPlayers: result.prevPlayers,
+            });
+
+            computeAndSet(res);
+          } finally {
+            setWorking(false);
+          }
+        }, 0);
+      }
+
+      const coveragePct = result ? (result.coverageRate * 100) : 0;
+      const progressWidth = `${Math.max(0, Math.min(100, coveragePct))}%`;
+
+      const coverageOk = result ? (result.coveredPairs.size === result.totalPairs && result.totalPairs > 0) : false;
+      const balanceOk = result ? (result.range === 0 && result.matches.length > 0) : false;
+      const violationsCount = result ? result.violations.length : 0;
+      const specialFirstBad = result ? result.specialFirstBad : false;
+
+      const status = dotType({ specialFirstBad, violations: violationsCount, coverageOk, balanceOk });
+
+      const statusLabel = !result ? "Ready"
+        : (specialFirstBad ? `Rule break: "${SPECIAL_NAME}" in Match#1`
+          : (violationsCount>0 ? "Violations"
+            : (coverageOk && balanceOk ? "Optimal balance" : "Best found")));
+
+      const statusHint = !result
+        ? `Auto maxConsecutive=${maxConsecutive} (n=${players.length})`
+        : `n=${players.length} | maxConsecutive=${maxConsecutive} | range=${result.range} | coverage ${result.coveredPairs.size}/${result.totalPairs} | matches ${result.matches.length}`;
+
+      function renderKPIs(){
+        if (!result){
+          return (
+            <div className="kpis">
+              <div className="kpi"><p className="kpiLabel">Players</p><p className="kpiValue">{players.length}</p><div className="kpiHint">ตั้งแต่ 4 คนขึ้นไป</div></div>
+              <div className="kpi"><p className="kpiLabel">Auto maxConsecutive</p><p className="kpiValue">{maxConsecutive}</p><div className="kpiHint">5→4, 6→3, 7+→2</div></div>
+              <div className="kpi"><p className="kpiLabel">Max matches</p><p className="kpiValue">{maxMatches}</p><div className="kpiHint">เพดานตารางรวม</div></div>
+              <div className="kpi"><p className="kpiLabel">Time budget</p><p className="kpiValue">{timeBudgetMs}ms</p><div className="kpiHint">เวลาในการค้นหา</div></div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="kpis">
+            <div className="kpi"><p className="kpiLabel">Matches</p><p className="kpiValue">{result.matches.length}</p><div className="kpiHint">เพดาน {maxMatches}</div></div>
+            <div className="kpi"><p className="kpiLabel">Coverage</p><p className="kpiValue">{coveragePct.toFixed(1)}%</p><div className="kpiHint">{result.coveredPairs.size}/{result.totalPairs} partner pairs</div></div>
+            <div className="kpi"><p className="kpiLabel">Balance (range)</p><p className="kpiValue">{result.range}</p><div className="kpiHint">max {result.maxPlayed} / min {result.minPlayed}</div></div>
+            <div className="kpi"><p className="kpiLabel">Rule breaks</p><p className="kpiValue">{violationsCount + (specialFirstBad?1:0)}</p><div className="kpiHint">streak + special</div></div>
+          </div>
+        );
+      }
+
+      function renderNotices(){
+        if (!result) return null;
+
+        const notes = [];
+        if (players.includes(SPECIAL_NAME)) {
+          notes.push(specialFirstBad
+            ? { type:"bad", text:`ละเมิดเงื่อนไข: พบ "${SPECIAL_NAME}" อยู่ในแมตช์แรก (Match #1)` }
+            : { type:"ok", text:`ผ่านเงื่อนไข: "${SPECIAL_NAME}" ไม่ได้อยู่ในแมตช์แรก` }
+          );
+        } else {
+          notes.push({ type:"ok", text:`ไม่พบชื่อ "${SPECIAL_NAME}" (ข้ามเงื่อนไขแมตช์แรก)` });
+        }
+
+        notes.push(violationsCount === 0
+          ? { type:"ok", text:`ไม่พบการละเมิดกติกาเล่นติดกัน (streak ≤ ${maxConsecutive})` }
+          : { type:"bad", text:`พบการละเมิด streak ≤ ${maxConsecutive}: ${violationsCount} รายการ (เพิ่ม Time budget/Max matches อาจช่วย)` }
+        );
+
+        notes.push(coverageOk
+          ? { type:"ok", text:"ครอบคลุมคู่พาร์ทเนอร์ครบ (ทุกคนได้เล่นคู่กันครบตามนิยามพาร์ทเนอร์)" }
+          : { type:"warn", text:"ยังครอบคลุมคู่พาร์ทเนอร์ไม่ครบ: เพิ่ม Max matches หรือกด Continue ต่อ" }
+        );
+
+        notes.push(balanceOk
+          ? { type:"ok", text:"Balance เท่ากันทั้งหมด (range = 0)" }
+          : { type:"warn", text:`Balance ยังไม่เท่ากัน (range = ${result.range}) — แต่ระบบให้ Balance เป็น objective หลักแล้ว` }
+        );
+
+        return notes.map((n,i)=>(<div key={i} className={`notice ${n.type}`}>{n.text}</div>));
+      }
+
+      function renderPlayerTable(){
+        if (!result) return null;
+        return (
+          <div className="card">
+            <div className="cardHeader">
+              <h3 className="cardTitle">Player workload</h3>
+              <div className="badge">auto maxConsecutive={maxConsecutive} | range={result.range}</div>
+            </div>
+            <table>
+              <thead><tr><th>Player</th><th>Played</th><th>Rested</th></tr></thead>
+              <tbody>
+                {players.map(p=>(
+                  <tr key={p}>
+                    <td>{p}</td>
+                    <td className="mono">{result.played.get(p) || 0}</td>
+                    <td className="mono">{result.rested.get(p) || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+
+      function renderSchedule(){
+        if (!result) return null;
+        return (
+          <div className="card">
+            <div className="cardHeader">
+              <h3 className="cardTitle">Schedule</h3>
+              <div className="row">
+                <button className="btn" onClick={() => downloadText("schedule.csv", toCSV(result.matches))} disabled={result.matches.length===0}>Export CSV</button>
+                <button className="btn" onClick={() => downloadText("schedule.json", JSON.stringify(result.matches, null, 2))} disabled={result.matches.length===0}>Export JSON</button>
+              </div>
+            </div>
+            <table>
+              <thead><tr><th style={{width:90}}>Match</th><th>Team A</th><th>Team B</th></tr></thead>
+              <tbody>
+                {result.matches.map((m, idx)=>(
+                  <tr key={idx}>
+                    <td className="mono">{idx+1}</td>
+                    <td>{formatTeam(m.t1)}</td>
+                    <td>{formatTeam(m.t2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="help">
+              กติกา: ถ้ามี "{SPECIAL_NAME}" จะไม่ถูกจัดลง Match #1 | maxConsecutive อัตโนมัติ: n=5→4, n=6→3, n≥7→2
+            </div>
+          </div>
+        );
+      }
+
+      // --------- Layout as requested ----------
+      // Left: Settings -> Results Overview -> Player workload
+      // Right: Schedule only
+      return (
+        <div className="container">
+          <div className="topbar">
+            <div>
+              <h1 className="title">
+                Badminton Doubles Scheduler
+                <span className="badge">Rules + Continue + Safe</span>
+              </h1>
+              <p className="subtitle">
+                Objective หลัก: ทำให้จำนวนแมตช์ต่อคนเท่า ๆ กันมากที่สุด (Balance-first) แล้วค่อยเพิ่ม coverage คู่พาร์ทเนอร์
+                พร้อม Continue ต่อจากตารางเดิม และเงื่อนไขพิเศษ "{SPECIAL_NAME}" ไม่ลงแมตช์แรก + maxConsecutive ตามจำนวนผู้เล่น
+              </p>
+              <div className="pill">
+                <span className={`dot ${status}`}></span>
+                <span><b>{statusLabel}</b> — {statusHint}</span>
+              </div>
+              <div className="progressWrap">
+                <div className="progressBar" style={{width: result ? progressWidth : "0%"}}></div>
+              </div>
+            </div>
+            <div className="badge mono">n ≥ 4 | doubles (4 players / match)</div>
+          </div>
+
+          <div className="grid" style={{gridTemplateColumns:"420px 1fr"}}>
+            {/* LEFT */}
+            <div style={{display:"flex", flexDirection:"column", gap:14}}>
+              <div className="card">
+                <div className="cardHeader">
+                  <h3 className="cardTitle">Settings</h3>
+                  <span className="badge">Input & Control</span>
+                </div>
+
+                <label>รายชื่อผู้เล่น (1 บรรทัดต่อ 1 คน)</label>
+                <textarea value={namesText} onChange={e=>setNamesText(e.target.value)} />
+                <div className="help">ระบบจะตัดชื่อซ้ำอัตโนมัติ</div>
+
+                <div className="inlineField">
+                  <div>
+                    <label>Auto maxConsecutive</label>
+                    <input value={`${maxConsecutive} (auto)`} readOnly />
+                    <div className="help">กติกา: 5→4, 6→3, 7+→2</div>
+                  </div>
+
+                  <div>
+                    <label>Max matches</label>
+                    <input type="number" min="1" max="500" value={maxMatches} onChange={e=>setMaxMatches(+e.target.value || 60)} />
+                  </div>
+
+                  <div>
+                    <label>Time budget (ms)</label>
+                    <input type="number" min="200" max="5000" value={timeBudgetMs} onChange={e=>setTimeBudgetMs(+e.target.value || 2500)} />
+                  </div>
+
+                  <div>
+                    <label>Add matches</label>
+                    <input type="number" min="1" max="200" value={addMatches} onChange={e=>setAddMatches(+e.target.value || 10)} />
+                  </div>
+                </div>
+
+                <div className="buttons">
+                  <button className="btn primary" onClick={onGenerateFresh} disabled={working || players.length < 4}>
+                    {working ? "Working..." : "Generate (Fresh)"}
+                  </button>
+
+                  <button className="btn primary" onClick={onContinue} disabled={working || !result || (result && result.matches.length>=maxMatches)}>
+                    {working ? "Continuing..." : `Continue (+${addMatches})`}
+                  </button>
+
+                  <button className="btn" onClick={()=>setResult(null)} disabled={working}>
+                    Clear
+                  </button>
+                </div>
+
+                {players.length < 4 && <div className="notice warn">ต้องมีผู้เล่นอย่างน้อย 4 คน</div>}
+                {result && result.matches.length>=maxMatches && <div className="notice warn">ตารางถึงเพดาน Max matches แล้ว — เพิ่ม Max matches ถ้าต้องการเล่นต่อ</div>}
+
+                <div className="notice">
+                  เงื่อนไขพิเศษ: ถ้าพบชื่อ "{SPECIAL_NAME}" จะไม่ถูกจัดลง Match #1 (ทั้ง Generate และ Continue)
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="cardHeader">
+                  <h3 className="cardTitle">Results Overview</h3>
+                  <span className="badge">KPIs</span>
+                </div>
+                {renderKPIs()}
+                {renderNotices()}
+              </div>
+
+              {renderPlayerTable()}
+            </div>
+
+            {/* RIGHT */}
+            <div style={{display:"flex", flexDirection:"column", gap:14}}>
+              {renderSchedule()}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------- Error Overlay (no silent blank page) ----------------
+    const rootEl = document.getElementById("root");
+
+    function showFatal(err){
+      if (!rootEl) return;
+      rootEl.innerHTML = `
+        <div style="padding:18px;font-family:system-ui;color:#fff">
+          <div style="font-weight:900;font-size:16px;margin-bottom:8px">App crashed</div>
+          <pre style="white-space:pre-wrap;background:rgba(255,255,255,0.06);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.14)">
+${String(err && err.stack ? err.stack : err)}
+          </pre>
+          <div style="opacity:.75;margin-top:8px">ถ้าขึ้นหน้านี้ ให้คัดลอก error ส่งมาได้เลย</div>
+        </div>
+      `;
+    }
+
+    try{
+      if (!rootEl) throw new Error("Cannot find #root element");
+      ReactDOM.createRoot(rootEl).render(<App />);
+    }catch(e){
+      showFatal(e);
+    }
+  </script>
+</body>
+</html>
