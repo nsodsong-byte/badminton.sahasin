@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Badminton Doubles Scheduler — UX เพศแบบติ๊กเลือก</title>
+  <title>Badminton Doubles Scheduler (Responsive)</title>
 
   <!-- ===== Robust CDN loader: unpkg -> jsDelivr fallback ===== -->
   <script>
     function loadScript(src){
       return new Promise((resolve,reject)=>{
-        const s = document.createElement("script");
-        s.src = src;
-        s.crossOrigin = "anonymous";
-        s.onload = () => resolve(src);
-        s.onerror = () => reject(new Error("Failed to load: " + src));
+        const s=document.createElement("script");
+        s.src=src;
+        s.crossOrigin="anonymous";
+        s.onload=()=>resolve(src);
+        s.onerror=()=>reject(new Error("Failed to load: "+src));
         document.head.appendChild(s);
       });
     }
@@ -71,6 +71,7 @@
         var(--bg);
       color:var(--text);
     }
+
     .container{ max-width:1160px; margin:0 auto; padding:24px 16px 40px; }
     @media (max-width:640px){ .container{ padding:18px 12px 96px; } }
 
@@ -94,7 +95,6 @@
       background:rgba(255,255,255,0.06); color:var(--muted);
       white-space:nowrap;
     }
-    @media (max-width:640px){ .pill{ margin-top:8px; } }
 
     .dot{ width:8px; height:8px; border-radius:999px; background:var(--accent); box-shadow:0 0 0 4px rgba(96,165,250,0.18); }
     .dot.ok{ background:var(--ok); box-shadow:0 0 0 4px rgba(52,211,153,0.16); }
@@ -130,9 +130,12 @@
       padding:10px 12px;
       outline:none;
     }
-    textarea{ min-height:120px; resize:vertical; }
+    textarea{ min-height:150px; resize:vertical; }
     input[type="number"]{ width:180px; }
-    @media (max-width:640px){ input[type="number"]{ width:100%; } }
+    @media (max-width:640px){
+      input[type="number"]{ width:100%; }
+      textarea{ min-height:120px; }
+    }
 
     .inlineField{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
     .help{ font-size:12px; color:var(--muted); line-height:1.55; margin-top:6px; }
@@ -197,7 +200,11 @@
 
     .checkCell{ width:54px; }
     .checkWrap{ display:flex; align-items:center; justify-content:center; }
-    input[type="checkbox"]{ width:18px; height:18px; accent-color: var(--accent); cursor:pointer; }
+    input[type="checkbox"]{
+      width:18px; height:18px;
+      accent-color: var(--accent);
+      cursor:pointer;
+    }
 
     .tabsWrap{
       display:none;
@@ -216,12 +223,18 @@
       font-weight:900;
       cursor:pointer;
     }
-    .tabBtn.active{ background:rgba(255,255,255,0.10); color:rgba(255,255,255,0.95); }
+    .tabBtn.active{
+      background:rgba(255,255,255,0.10);
+      color:rgba(255,255,255,0.95);
+    }
     @media (max-width:980px){ .tabsWrap{ display:flex; } }
 
     .mobileOnly{ display:none; }
     .desktopOnly{ display:block; }
-    @media (max-width:980px){ .desktopOnly{ display:none; } .mobileOnly{ display:block; } }
+    @media (max-width:980px){
+      .desktopOnly{ display:none; }
+      .mobileOnly{ display:block; }
+    }
 
     .bottomBar{
       display:none;
@@ -250,6 +263,7 @@
 
   <script type="text/babel">
     const rootEl = document.getElementById("root");
+
     function showFatal(err){
       if (!rootEl) return;
       rootEl.innerHTML = `
@@ -276,28 +290,24 @@
     (async ()=>{
       try{
         await waitForReact();
+
         const { useMemo, useState, useEffect } = window.React;
 
-        // =========================
-        // RULES
-        // - JIEB/MAY: strict rest-one individually (ห้ามลงติดกัน)
-        // - OTHERS: maxConsecutive = auto + 1
-        // - Match#1: ห้าม JIEB/MAY
-        // - NEW: ห้าม "ผู้หญิง" คู่กันในทีมเดียวกัน (A หรือ B ห้ามเป็นหญิง-หญิง)
-        // =========================
+        // ===== Names & special rules =====
         const JIEB = "พี่เจี๊ยบ";
         const MAY  = "พี่เมย์";
         const REST_ONE_NAMES = new Set([JIEB, MAY]);
-        const SPECIAL_FIRST_MATCH_EXCLUDE = new Set([JIEB, MAY]);
+        const MATCH1_EXCLUDE = new Set([JIEB, MAY]);
 
-        function autoMaxConsecutive(n){
+        // Base maxConsecutive (เดิม)
+        function autoBaseMaxConsecutive(n){
           if (n === 5) return 4;
           if (n === 6) return 3;
           if (n >= 7) return 2;
           return 2;
         }
 
-        // ---------------- Utilities ----------------
+        // ----- utilities -----
         function combPairs(players){
           const pairs = [];
           for (let i=0; i<players.length; i++){
@@ -355,7 +365,7 @@
           return uniq;
         }
 
-        // ---------------- Validations ----------------
+        // ----- validations (for reporting) -----
         function validateRules(players, matches, maxConsecutiveOthers, femaleSet){
           const streak = new Map(players.map(p=>[p,0]));
           let prevPlayers = new Set();
@@ -365,16 +375,16 @@
             const m = matches[i];
             const curPlayers = playersOfMatch(m);
 
-            // Match#1 exclude
+            // Match#1 exclude JIEB/MAY
             if (i === 0){
-              for (const name of SPECIAL_FIRST_MATCH_EXCLUDE){
+              for (const name of MATCH1_EXCLUDE){
                 if (players.includes(name) && curPlayers.has(name)){
                   violations.push({ matchIndex:1, type:"match1_exclude", player:name });
                 }
               }
             }
 
-            // strict rest-one for Jieb/May
+            // strict rest-one for JIEB/MAY
             if (prevPlayers.has(JIEB) && curPlayers.has(JIEB)) violations.push({ matchIndex:i+1, type:"special_rest_one", player:JIEB });
             if (prevPlayers.has(MAY)  && curPlayers.has(MAY))  violations.push({ matchIndex:i+1, type:"special_rest_one", player:MAY });
 
@@ -386,7 +396,7 @@
               if (femaleSet.has(c) && femaleSet.has(d)) violations.push({ matchIndex:i+1, type:"female_pair", team:"B", players:[c,d] });
             }
 
-            // others maxConsecutive (auto+1)
+            // others maxConsecutive
             for (const p of players){
               if (REST_ONE_NAMES.has(p)) continue;
 
@@ -412,13 +422,13 @@
           return rested;
         }
 
-        // ---------------- Scheduler (Balance-first + Continue) ----------------
+        // ----- Scheduler (balance-first + continue) -----
         function buildScheduleBalanceFirst(players, opts, initial){
           const {
             timeBudgetMs = 1600,
             maxRestarts = 1200,
             maxStepsHardCap = 20000,
-            maxMatches = 18,
+            maxMatches = 60,
             candidateSamplesPerStep = 280,
             maxConsecutiveOthers = 2,
             femaleSet = new Set(),
@@ -469,9 +479,11 @@
             }
 
             function wouldViolateStreak(mPlayers){
+              // JIEB/MAY must rest 1 match
               if (prevPlayers.has(JIEB) && mPlayers.has(JIEB)) return true;
               if (prevPlayers.has(MAY)  && mPlayers.has(MAY))  return true;
 
+              // others maxConsecutive
               for (const p of mPlayers){
                 if (REST_ONE_NAMES.has(p)) continue;
                 const next = prevPlayers.has(p) ? ((streak.get(p)||0)+1) : 1;
@@ -484,13 +496,17 @@
               for (const p of players){
                 if (mPlayers.has(p)){
                   played.set(p, (played.get(p)||0) + 1);
-                  if (REST_ONE_NAMES.has(p)){
+
+                  // keep streak map for others; specials are enforced by prevPlayers check
+                  if (REST_ONE_NAMES.has(p)) {
                     streak.set(p, 0);
                   } else {
                     const next = prevPlayers.has(p) ? ((streak.get(p)||0)+1) : 1;
                     streak.set(p, next);
                   }
-                } else streak.set(p, 0);
+                } else {
+                  streak.set(p, 0);
+                }
               }
               prevPlayers = mPlayers;
             }
@@ -527,7 +543,6 @@
                   if (violatesFemalePair(a,b,c,d)) continue;
 
                   const mPlayers = new Set([a,b,c,d]);
-
                   if (violatesMatch1(mPlayers, nextMatchIndex)) continue;
                   if (wouldViolateStreak(mPlayers)) continue;
 
@@ -548,6 +563,7 @@
                     bestCand = { a,b,c,d,k1,k2,hScore };
                   }
                 }
+
                 return bestCand;
               }
 
@@ -574,6 +590,7 @@
               applyMatch(playersOfMatch(m));
             }
 
+            // hard reject if match#1 contains special
             if (matches.length > 0){
               const p0 = playersOfMatch(matches[0]);
               if ((players.includes(JIEB) && p0.has(JIEB)) || (players.includes(MAY) && p0.has(MAY))) return null;
@@ -632,20 +649,20 @@
           return "warn";
         }
 
-        // ---------------- Stable Cards ----------------
+        // ----- Stable Cards -----
         const SettingsCard = window.React.memo(function SettingsCard(props){
           const {
             namesText, setNamesText,
             players,
             femaleFlags, setFemaleFlags,
-            maxConsecutiveBase,
-            maxConsecutiveOthers,
+            baseMaxConsecutive,
+            othersMaxConsecutive,
+            hasSpecial,
             maxMatches, setMaxMatches,
             timeBudgetMs, setTimeBudgetMs,
             addMatches, setAddMatches,
             working, playersCount,
             result, onGenerateFresh, onContinue, onClear,
-            JIEB, MAY
           } = props;
 
           const [genderFilter, setGenderFilter] = useState("");
@@ -665,13 +682,11 @@
           function toggleFemale(name){
             setFemaleFlags(prev => ({ ...prev, [name]: !prev[name] }));
           }
-
           function clearAllFemale(){
             const next = {};
             for (const p of players) next[p] = false;
             setFemaleFlags(next);
           }
-
           function setAllFemale(){
             const next = {};
             for (const p of players) next[p] = true;
@@ -696,7 +711,6 @@
               <div className="help">ระบบจะตัดชื่อซ้ำอัตโนมัติ</div>
 
               <label>เลือกเพศ (ติ๊ก = ผู้หญิง) — ใช้กับกติกา “ห้ามผู้หญิงคู่กันในทีมเดียวกัน”</label>
-
               <div className="inlineField" style={{alignItems:"center"}}>
                 <div style={{flex:1, minWidth:220}}>
                   <input
@@ -751,19 +765,24 @@
               <div className="inlineField">
                 <div>
                   <label>Base maxConsecutive (auto)</label>
-                  <input value={`${maxConsecutiveBase} (auto)`} readOnly />
+                  <input value={`${baseMaxConsecutive} (auto)`} readOnly />
                   <div className="help">กติกาเดิม: 5→4, 6→3, 7+→2</div>
                 </div>
 
                 <div>
                   <label>Others maxConsecutive</label>
-                  <input value={`${maxConsecutiveOthers} (= base + 1)`} readOnly />
-                  <div className="help">เงื่อนไขใหม่: คนอื่นเล่นติดกันได้ +1</div>
+                  <input value={`${othersMaxConsecutive}`} readOnly />
+                  <div className="help">
+                    {hasSpecial
+                      ? `เปิด +1 เพราะพบ ${JIEB} หรือ ${MAY} ในรายชื่อ`
+                      : `ไม่ +1 เพราะไม่พบ ${JIEB}/${MAY} ในรายชื่อ`
+                    }
+                  </div>
                 </div>
 
                 <div>
-                  <label>Max matches</label>
-                  <input type="number" min="1" max="60" value={maxMatches} onChange={e=>setMaxMatches(+e.target.value || 18)} />
+                  <label>Max matches (default = 18)</label>
+                  <input type="number" min="1" max="500" value={maxMatches} onChange={e=>setMaxMatches(+e.target.value || 18)} />
                 </div>
 
                 <div>
@@ -797,7 +816,7 @@
               <div className="notice">
                 เงื่อนไข:
                 <br/>• {JIEB}/{MAY} เว้นแมตช์รายคน (ห้ามลงติดกัน)
-                <br/>• คนอื่น maxConsecutive = base + 1
+                <br/>• คนอื่น maxConsecutive = base{hasSpecial ? " + 1 (เปิด)" : " (ไม่ +1)"}
                 <br/>• ห้าม {JIEB}/{MAY} อยู่ Match #1
                 <br/>• ห้ามผู้หญิงคู่กัน “ในทีมเดียวกัน”
               </div>
@@ -819,14 +838,13 @@
           );
         });
 
-        // ---------------- App ----------------
+        // ----- App -----
         function App(){
           const [namesText, setNamesText] = useState("");
-
           const players = useMemo(()=>parseNamesList(namesText), [namesText]);
 
-          // checkbox-based female selection
-          const [femaleFlags, setFemaleFlags] = useState({}); // {name:true}
+          // female tick UI
+          const [femaleFlags, setFemaleFlags] = useState({});
           useEffect(() => {
             setFemaleFlags(prev => {
               const next = {};
@@ -841,17 +859,22 @@
             return s;
           }, [players, femaleFlags]);
 
-          const maxConsecutiveBase = useMemo(() => autoMaxConsecutive(players.length), [players.length]);
-          const maxConsecutiveOthers = useMemo(() => Math.max(1, maxConsecutiveBase + 1), [maxConsecutiveBase]);
+          const baseMaxConsecutive = useMemo(() => autoBaseMaxConsecutive(players.length), [players.length]);
+
+          // ✅ NEW RULE: +1 only if JIEB or MAY exists in players
+          const hasSpecial = useMemo(() => players.includes(JIEB) || players.includes(MAY), [players]);
+          const othersMaxConsecutive = useMemo(
+            () => (hasSpecial ? (baseMaxConsecutive + 1) : baseMaxConsecutive),
+            [hasSpecial, baseMaxConsecutive]
+          );
 
           const [timeBudgetMs, setTimeBudgetMs] = useState(2500);
-          const [maxMatches, setMaxMatches] = useState(18);
+          const [maxMatches, setMaxMatches] = useState(18); // ✅ default 18
           const [addMatches, setAddMatches] = useState(10);
 
           const [working, setWorking] = useState(false);
           const [result, setResult] = useState(null);
           const [mobileTab, setMobileTab] = useState("summary");
-
           const [doneMatches, setDoneMatches] = useState({});
 
           function isNarrow(){
@@ -874,19 +897,29 @@
                 violations: [],
                 rested: new Map(players.map(p=>[p,0])),
                 specialFirstBad: false,
-                maxConsecutiveBase,
-                maxConsecutiveOthers,
+                baseMaxConsecutive,
+                othersMaxConsecutive,
+                hasSpecial,
                 femaleCount: femaleSet.size,
               });
               setDoneMatches({});
               return;
             }
 
-            const violations = validateRules(players, res.matches, maxConsecutiveOthers, femaleSet);
+            const violations = validateRules(players, res.matches, othersMaxConsecutive, femaleSet);
             const rested = calcRest(players, res.matches);
             const specialFirstBad = violations.some(v => v.type === "match1_exclude");
 
-            setResult({ ...res, violations, rested, specialFirstBad, maxConsecutiveBase, maxConsecutiveOthers, femaleCount: femaleSet.size });
+            setResult({
+              ...res,
+              violations,
+              rested,
+              specialFirstBad,
+              baseMaxConsecutive,
+              othersMaxConsecutive,
+              hasSpecial,
+              femaleCount: femaleSet.size
+            });
           }
 
           function onGenerateFresh(){
@@ -897,7 +930,7 @@
                   timeBudgetMs,
                   maxMatches,
                   candidateSamplesPerStep: 280,
-                  maxConsecutiveOthers,
+                  maxConsecutiveOthers: othersMaxConsecutive,
                   femaleSet,
                 }, null);
 
@@ -923,7 +956,7 @@
                   timeBudgetMs,
                   maxMatches: targetTotal,
                   candidateSamplesPerStep: 280,
-                  maxConsecutiveOthers,
+                  maxConsecutiveOthers: othersMaxConsecutive,
                   femaleSet,
                 }, {
                   matches: result.matches,
@@ -941,6 +974,7 @@
             }, 0);
           }
 
+          // prune done flags if schedule shrinks
           useEffect(() => {
             if (!result) return;
             const len = result.matches.length;
@@ -979,8 +1013,8 @@
                 : (coverageOk && balanceOk ? "Optimal balance" : "Best found")));
 
           const statusHint = !result
-            ? `n=${players.length} | base=${maxConsecutiveBase} | others=${maxConsecutiveOthers} | female=${femaleSet.size}`
-            : `n=${players.length} | base=${result.maxConsecutiveBase} | others=${result.maxConsecutiveOthers} | female=${result.femaleCount} | range=${result.range} | coverage ${result.coveredPairs.size}/${result.totalPairs} | matches ${result.matches.length}`;
+            ? `n=${players.length} | base=${baseMaxConsecutive} | others=${othersMaxConsecutive} | +1=${hasSpecial ? "ON" : "OFF"} | female=${femaleSet.size}`
+            : `n=${players.length} | base=${result.baseMaxConsecutive} | others=${result.othersMaxConsecutive} | +1=${result.hasSpecial ? "ON" : "OFF"} | female=${result.femaleCount} | range=${result.range} | coverage ${result.coveredPairs.size}/${result.totalPairs} | matches ${result.matches.length}`;
 
           function renderKPIs(){
             if (!result){
@@ -988,7 +1022,7 @@
                 <div className="kpis">
                   <div className="kpi"><p className="kpiLabel">Players</p><p className="kpiValue">{players.length}</p><div className="kpiHint">ตั้งแต่ 4 คนขึ้นไป</div></div>
                   <div className="kpi"><p className="kpiLabel">Female (ticked)</p><p className="kpiValue">{femaleSet.size}</p><div className="kpiHint">ติ๊ก = ผู้หญิง</div></div>
-                  <div className="kpi"><p className="kpiLabel">Others maxConsecutive</p><p className="kpiValue">{maxConsecutiveOthers}</p><div className="kpiHint">base + 1</div></div>
+                  <div className="kpi"><p className="kpiLabel">Others maxConsecutive</p><p className="kpiValue">{othersMaxConsecutive}</p><div className="kpiHint">+1 เฉพาะเมื่อมีพี่เจี๊ยบ/พี่เมย์</div></div>
                   <div className="kpi"><p className="kpiLabel">Time budget</p><p className="kpiValue">{timeBudgetMs}ms</p><div className="kpiHint">เวลาในการค้นหา</div></div>
                 </div>
               );
@@ -1009,8 +1043,8 @@
           function renderNotices(){
             if (!result) return null;
 
-            const notes = [];
             const v = result.violations || [];
+            const notes = [];
 
             const hasMatch1 = v.some(x => x.type === "match1_exclude");
             notes.push(hasMatch1
@@ -1024,9 +1058,16 @@
               : { type:"ok", text:"ผ่านกติกา: ไม่พบผู้หญิงคู่กันในทีมเดียวกัน" }
             );
 
-            notes.push(violationsCount === 0
-              ? { type:"ok", text:`ไม่พบการละเมิดกติกาอื่น ๆ (rest-one ของ ${JIEB}/${MAY} + คนอื่น maxConsecutive=${result.maxConsecutiveOthers})` }
-              : { type:"warn", text:`รวมพบการละเมิดกติกา: ${violationsCount} รายการ (ถ้าหาชุดที่ผ่านยาก ให้เพิ่ม Time budget/Max matches)` }
+            const hasSpecialRest = v.some(x => x.type === "special_rest_one");
+            notes.push(hasSpecialRest
+              ? { type:"bad", text:`ละเมิด: ${JIEB}/${MAY} ลงติดกัน (ต้องเว้นแมตช์)` }
+              : { type:"ok", text:`ผ่าน: ${JIEB}/${MAY} เว้นแมตช์ถูกต้อง` }
+            );
+
+            const hasMaxConsec = v.some(x => x.type === "maxConsecutive");
+            notes.push(hasMaxConsec
+              ? { type:"bad", text:`ละเมิด: คนอื่นเล่นติดกันเกิน ${result.othersMaxConsecutive}` }
+              : { type:"ok", text:`ผ่าน: คนอื่นไม่เกิน maxConsecutive=${result.othersMaxConsecutive}` }
             );
 
             notes.push(coverageOk
@@ -1048,7 +1089,9 @@
               <div className="card">
                 <div className="cardHeader">
                   <h3 className="cardTitle">Player workload</h3>
-                  <div className="badge">others maxConsecutive={result.maxConsecutiveOthers} | range={result.range}</div>
+                  <div className="badge">
+                    base={result.baseMaxConsecutive} | others={result.othersMaxConsecutive} | +1={result.hasSpecial ? "ON" : "OFF"} | range={result.range}
+                  </div>
                 </div>
                 <table>
                   <thead><tr><th>Player</th><th>Played</th><th>Rested</th></tr></thead>
@@ -1135,7 +1178,8 @@
                   <h1 className="title">
                     Badminton Doubles Scheduler
                     <span className="badge">Responsive</span>
-                    <span className="badge">Gender tick UI</span>
+                    <span className="badge">No-black-screen</span>
+                    <span className="badge">Gender Tick</span>
                   </h1>
 
                   <div className="pill">
@@ -1148,7 +1192,7 @@
                   </div>
 
                   <p className="subtitle">
-                    UX ใหม่: เลือกผู้หญิงด้วย “ติ๊กชื่อ” + ค้นหา + ปุ่มล้าง/เลือกทั้งหมด
+                    PC: ซ้าย Settings/Results/Players ขวา Schedule | มือถือ: Tabs + ปุ่มล่าง | Schedule มี Done
                   </p>
                 </div>
                 <div className="badge mono">n ≥ 4 | doubles</div>
@@ -1169,8 +1213,9 @@
                     players={players}
                     femaleFlags={femaleFlags}
                     setFemaleFlags={setFemaleFlags}
-                    maxConsecutiveBase={maxConsecutiveBase}
-                    maxConsecutiveOthers={maxConsecutiveOthers}
+                    baseMaxConsecutive={baseMaxConsecutive}
+                    othersMaxConsecutive={othersMaxConsecutive}
+                    hasSpecial={hasSpecial}
                     maxMatches={maxMatches}
                     setMaxMatches={setMaxMatches}
                     timeBudgetMs={timeBudgetMs}
@@ -1183,8 +1228,6 @@
                     onGenerateFresh={onGenerateFresh}
                     onContinue={onContinue}
                     onClear={()=>{ setResult(null); setDoneMatches({}); }}
-                    JIEB={JIEB}
-                    MAY={MAY}
                   />
 
                   <ResultsCard renderKPIs={renderKPIs} renderNotices={renderNotices} />
@@ -1206,8 +1249,9 @@
                     players={players}
                     femaleFlags={femaleFlags}
                     setFemaleFlags={setFemaleFlags}
-                    maxConsecutiveBase={maxConsecutiveBase}
-                    maxConsecutiveOthers={maxConsecutiveOthers}
+                    baseMaxConsecutive={baseMaxConsecutive}
+                    othersMaxConsecutive={othersMaxConsecutive}
+                    hasSpecial={hasSpecial}
                     maxMatches={maxMatches}
                     setMaxMatches={setMaxMatches}
                     timeBudgetMs={timeBudgetMs}
@@ -1220,8 +1264,6 @@
                     onGenerateFresh={onGenerateFresh}
                     onContinue={onContinue}
                     onClear={()=>{ setResult(null); setDoneMatches({}); }}
-                    JIEB={JIEB}
-                    MAY={MAY}
                   />
                 )}
               </div>
