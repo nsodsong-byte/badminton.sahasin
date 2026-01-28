@@ -293,6 +293,10 @@
 
         const { useMemo, useState, useEffect } = window.React;
 
+        // ===== App Version =====
+        const APP_VERSION = "v2026.01.28-01";
+        console.log(`[Badminton Scheduler] running ${APP_VERSION}`);
+
         // ===== Names & special rules =====
         const JIEB = "พี่เจี๊ยบ";
         const MAY  = "พี่เมย์";
@@ -819,6 +823,7 @@
                 <br/>• คนอื่น maxConsecutive = base{hasSpecial ? " + 1 (เปิด)" : " (ไม่ +1)"}
                 <br/>• ห้าม {JIEB}/{MAY} อยู่ Match #1
                 <br/>• ห้ามผู้หญิงคู่กัน “ในทีมเดียวกัน”
+                <br/>• Version: {APP_VERSION}
               </div>
             </div>
           );
@@ -1013,8 +1018,8 @@
                 : (coverageOk && balanceOk ? "Optimal balance" : "Best found")));
 
           const statusHint = !result
-            ? `n=${players.length} | base=${baseMaxConsecutive} | others=${othersMaxConsecutive} | +1=${hasSpecial ? "ON" : "OFF"} | female=${femaleSet.size}`
-            : `n=${players.length} | base=${result.baseMaxConsecutive} | others=${result.othersMaxConsecutive} | +1=${result.hasSpecial ? "ON" : "OFF"} | female=${result.femaleCount} | range=${result.range} | coverage ${result.coveredPairs.size}/${result.totalPairs} | matches ${result.matches.length}`;
+            ? `ver=${APP_VERSION} | n=${players.length} | base=${baseMaxConsecutive} | others=${othersMaxConsecutive} | +1=${hasSpecial ? "ON" : "OFF"} | female=${femaleSet.size}`
+            : `ver=${APP_VERSION} | n=${players.length} | base=${result.baseMaxConsecutive} | others=${result.othersMaxConsecutive} | +1=${result.hasSpecial ? "ON" : "OFF"} | female=${result.femaleCount} | range=${result.range} | coverage ${result.coveredPairs.size}/${result.totalPairs} | matches ${result.matches.length}`;
 
           function renderKPIs(){
             if (!result){
@@ -1023,7 +1028,7 @@
                   <div className="kpi"><p className="kpiLabel">Players</p><p className="kpiValue">{players.length}</p><div className="kpiHint">ตั้งแต่ 4 คนขึ้นไป</div></div>
                   <div className="kpi"><p className="kpiLabel">Female (ticked)</p><p className="kpiValue">{femaleSet.size}</p><div className="kpiHint">ติ๊ก = ผู้หญิง</div></div>
                   <div className="kpi"><p className="kpiLabel">Others maxConsecutive</p><p className="kpiValue">{othersMaxConsecutive}</p><div className="kpiHint">+1 เฉพาะเมื่อมีพี่เจี๊ยบ/พี่เมย์</div></div>
-                  <div className="kpi"><p className="kpiLabel">Time budget</p><p className="kpiValue">{timeBudgetMs}ms</p><div className="kpiHint">เวลาในการค้นหา</div></div>
+                  <div className="kpi"><p className="kpiLabel">Version</p><p className="kpiValue">{APP_VERSION}</p><div className="kpiHint">แสดงเวอร์ชันที่ใช้อยู่</div></div>
                 </div>
               );
             }
@@ -1090,7 +1095,7 @@
                 <div className="cardHeader">
                   <h3 className="cardTitle">Player workload</h3>
                   <div className="badge">
-                    base={result.baseMaxConsecutive} | others={result.othersMaxConsecutive} | +1={result.hasSpecial ? "ON" : "OFF"} | range={result.range}
+                    ver={APP_VERSION} | base={result.baseMaxConsecutive} | others={result.othersMaxConsecutive} | +1={result.hasSpecial ? "ON" : "OFF"} | range={result.range}
                   </div>
                 </div>
                 <table>
@@ -1125,8 +1130,23 @@
                 <div className="cardHeader">
                   <h3 className="cardTitle">Schedule</h3>
                   <div>
-                    <button className="btn" onClick={() => downloadText("schedule.csv", toCSV(result.matches))} disabled={result.matches.length===0}>CSV</button>
-                    <button className="btn" onClick={() => downloadText("schedule.json", JSON.stringify(result.matches, null, 2))} disabled={result.matches.length===0}>JSON</button>
+                    <button
+                      className="btn"
+                      onClick={() => downloadText(`schedule_${APP_VERSION}.csv`, toCSV(result.matches))}
+                      disabled={result.matches.length===0}
+                    >
+                      CSV
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => downloadText(
+                        `schedule_${APP_VERSION}.json`,
+                        JSON.stringify({ version: APP_VERSION, matches: result.matches }, null, 2)
+                      )}
+                      disabled={result.matches.length===0}
+                    >
+                      JSON
+                    </button>
                   </div>
                 </div>
 
@@ -1180,6 +1200,7 @@
                     <span className="badge">Responsive</span>
                     <span className="badge">No-black-screen</span>
                     <span className="badge">Gender Tick</span>
+                    <span className="badge mono">Version {APP_VERSION}</span>
                   </h1>
 
                   <div className="pill">
@@ -1195,7 +1216,7 @@
                     PC: ซ้าย Settings/Results/Players ขวา Schedule | มือถือ: Tabs + ปุ่มล่าง | Schedule มี Done
                   </p>
                 </div>
-                <div className="badge mono">n ≥ 4 | doubles</div>
+                <div className="badge mono">Version {APP_VERSION} | n ≥ 4 | doubles</div>
               </div>
 
               <div className="tabsWrap">
